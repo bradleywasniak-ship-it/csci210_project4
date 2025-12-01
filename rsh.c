@@ -30,14 +30,24 @@ void sendmsg (char *user, char *target, char *msg) {
 	// TODO:
 	// Send a request to the server to send the message (msg) to the target user (target)
 	// by creating the message structure and writing it to server's FIFO
+	struct message m;
+    int fd;
 
+    // Fill message struct
+    strcpy(m.source, user);
+    strcpy(m.target, target);
+    strcpy(m.msg, msg);
 
+    // Open server FIFO for writing
+    fd = open("serverFIFO", O_WRONLY);
+    if (fd < 0) {
+        perror("Cannot open serverFIFO");
+        return;
+    }
 
-
-
-
-
-
+    // Send struct to server
+    write(fd, &m, sizeof(m));
+    close(fd);
 }
 
 void* messageListener(void *arg) {
@@ -49,11 +59,24 @@ void* messageListener(void *arg) {
 	// Incoming message from [source]: [message]
 	// put an end of line at the end of the message
 
+	int fd;
+    struct message m;
 
+    // open this user's FIFO
+    fd = open(uName, O_RDONLY);
+    if (fd < 0) {
+        perror("Cannot open user FIFO");
+        pthread_exit(0);
+    }
 
-
-
-
+    // loop forever reading messages
+    while (1) {
+        int n = read(fd, &m, sizeof(m));
+        if (n > 0) {
+            printf("\nIncoming message from %s: %s\n", m.source, m.msg);
+            fflush(stdout);
+        }
+    }
 	pthread_exit((void*)0);
 }
 
@@ -85,10 +108,8 @@ int main(int argc, char **argv) {
 
     // TODO:
     // create the message listener thread
-
-
-
-
+	pthread_t tid;
+	pthread_create(&tid, NULL, messageListener, NULL);
 
     while (1) {
 
@@ -123,16 +144,19 @@ int main(int argc, char **argv) {
 		// printf("sendmsg: you have to specify target user\n");
 		// if no message is specified, you should print the followingA
  		// printf("sendmsg: you have to enter a message\n");
+		char *target = strtok(NULL, " ");
+		if (target == NULL) {
+			printf("sendmsg: you have to specify target user\n");
+			continue;
+		}
 
+		char *msgStart = strtok(NULL, "");
+		if (msgStart == NULL) {
+			printf("sendmsg: you have to enter a message\n");
+			continue;
+		}
 
-
-
-
-
-
-
-
-
+		sendmsg(uName, target, msgStart);
 		continue;
 	}
 
