@@ -33,19 +33,16 @@ void sendmsg (char *user, char *target, char *msg) {
 	struct message m;
     int fd;
 
-    // Fill message struct
     strcpy(m.source, user);
     strcpy(m.target, target);
     strcpy(m.msg, msg);
 
-    // Open server FIFO for writing
     fd = open("serverFIFO", O_WRONLY);
     if (fd < 0) {
         perror("Cannot open serverFIFO");
         return;
     }
 
-    // Send struct to server
     write(fd, &m, sizeof(m));
     close(fd);
 }
@@ -62,22 +59,22 @@ void* messageListener(void *arg) {
 	int fd;
     struct message m;
 
-    // open this user's FIFO
-    fd = open(uName, O_RDONLY);
+    mkfifo(uName,0666);
+    fd = open(uName,O_RDONLY | O_NONBLOCK);
+
     if (fd < 0) {
-        perror("Cannot open user FIFO");
+        perror("open user FIFO");
         pthread_exit(0);
     }
 
-    // loop forever reading messages
     while (1) {
-        int n = read(fd, &m, sizeof(m));
+        int n = read(fd,&m,sizeof(m));
         if (n > 0) {
-            printf("\nIncoming message from %s: %s\n", m.source, m.msg);
+            printf("\nIncoming message from %s: %s\n",m.source,m.msg);
             fflush(stdout);
         }
+        usleep(20000);
     }
-	pthread_exit((void*)0);
 }
 
 int isAllowed(const char*cmd) {
@@ -146,13 +143,13 @@ int main(int argc, char **argv) {
  		// printf("sendmsg: you have to enter a message\n");
 		char *target = strtok(NULL, " ");
 		if (target == NULL) {
-			printf("sendmsg: you have to specify target user\n");
+			printf("specify target user\n");
 			continue;
 		}
 
 		char *msgStart = strtok(NULL, "");
 		if (msgStart == NULL) {
-			printf("sendmsg: you have to enter a message\n");
+			printf("enter a message\n");
 			continue;
 		}
 
@@ -165,7 +162,7 @@ int main(int argc, char **argv) {
 	if (strcmp(cmd,"cd")==0) {
 		char *targetDir=strtok(NULL," ");
 		if (strtok(NULL," ")!=NULL) {
-			printf("-rsh: cd: too many arguments\n");
+			printf("too many arguments\n");
 		}
 		else {
 			chdir(targetDir);
