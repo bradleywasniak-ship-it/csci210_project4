@@ -21,31 +21,40 @@ void terminate(int sig) {
 int main() {
 	int server;
 	int target;
-	int dummy;
-    struct message req;
+	int dummyfd;
+	struct message req;
+	signal(SIGPIPE,SIG_IGN);
+	signal(SIGINT,terminate);
+	server = open("serverFIFO",O_RDONLY);
+	dummyfd = open("serverFIFO",O_WRONLY);
 
-    signal(SIGPIPE,SIG_IGN);
-    signal(SIGINT,terminate);
-
-    mkfifo("serverFIFO",0666);       // create FIFO if missing
-    server = open("serverFIFO",O_RDONLY);
-    dummy  = open("serverFIFO",O_WRONLY); // keep FIFO open
-
-    while (1) {
+	while (1) {
 		// TODO:
 		// read requests from serverFIFO
-        int n = read(server,&req,sizeof(req));
-        if (n <= 0) continue;
+		
+		if (read(server,&req,sizeof(req))!=sizeof(req)) {
+			continue;
+		}
+
+		printf("Received a request from %s to send the message %s to %s.\n",req.source,req.msg,req.target);
 
 		// TODO:
 		// open target FIFO and write the whole message struct to the target FIFO
 		// close target FIFO after writing the message
-        target = open(req.target,O_WRONLY|O_NONBLOCK);
-        if (target < 0) {
-            printf("User %s not active\n",req.target);
-            continue;
-        }
-        write(target,&req,sizeof(req));
-        close(target);
-    }
-}
+
+		target = open(req.target, O_WRONLY);
+		if (target < 0) {
+			perror("server: open target FIFO");
+			continue;
+		}
+
+		if (write(target, &req, sizeof(req)) != sizeof(req)) {
+			perror("server: write message");
+		}
+
+		close(target);
+
+	}
+	close(server);
+	close(dummyfd);
+	return 0;
