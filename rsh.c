@@ -31,25 +31,14 @@ void sendmsg (char *user, char *target, char *msg) {
 	// Send a request to the server to send the message (msg) to the target user (target)
 	// by creating the message structure and writing it to server's FIFO
 	struct message m;
-	int fd;
 
-	memset(&m, 0, sizeof(m));
-	strcpy(m.source, user);
-	strcpy(m.target, target);
-	strcpy(m.msg, msg);
+    strcpy(m.source, user);
+    strcpy(m.target, target);
+    strcpy(m.msg, msg);
 
-	fd = open("serverFIFO", O_WRONLY);
-	if (fd < 0) {
-		perror("sendmsg: open serverFIFO");
-		return;
-	}
-
-	if (write(fd, &m, sizeof(m)) != sizeof(m)) {
-		perror("sendmsg: write");
-	}
-
-	close(fd);
-
+    int fd = open("serverFIFO", O_WRONLY);
+    write(fd, &m, sizeof(m));
+    close(fd);
 }
 
 void* messageListener(void *arg) {
@@ -60,31 +49,22 @@ void* messageListener(void *arg) {
 	// following format
 	// Incoming message from [source]: [message]
 	// put an end of line at the end of the message
-	char fifoName[64];
-	snprintf(fifoName, sizeof(fifoName), "%s", uName);
+	char fifoName[50];
+    sprintf(fifoName, "%s", (char*)arg);
 
-	int fd;
-	struct message m;
+    int fd = open(fifoName, O_RDONLY);
 
-	while (1) {
-		fd = open(fifoName, O_RDONLY);
-		if (fd < 0) {
-			perror("listener: open");
-			sleep(1);
-			continue;
-		}
+    struct message incoming;
 
-		while (read(fd, &m, sizeof(m)) == sizeof(m)) {
-			printf("\nIncoming message from %s: %s\n", m.source, m.msg);
-			fflush(stdout);
-			fprintf(stderr, "rsh>");
-			fflush(stderr);
-		}
+    while (1) {
+        if (read(fd, &incoming, sizeof(incoming)) > 0) {
+            printf("Incoming message from %s: %s\n",
+                   incoming.source, incoming.msg);
+            fflush(stdout);
+        }
+    }
 
-		close(fd);
-	}
-
-	pthread_exit((void*)0);
+    pthread_exit(0);
 }
 
 int isAllowed(const char*cmd) {
@@ -115,11 +95,8 @@ int main(int argc, char **argv) {
 
     // TODO:
     // create the message listener thread
-	pthread_t t;
-    if (pthread_create(&t, NULL, messageListener, NULL) != 0) {
-        perror("pthread_create");
-        exit(1);
-    }
+	pthread_t tid;
+	pthread_create(&tid, NULL, messageListener, (void*)uName);
 
     while (1) {
 
