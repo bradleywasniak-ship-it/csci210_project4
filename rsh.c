@@ -6,16 +6,12 @@
 #include <string.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include <sys/stat.h>
-#include <errno.h>
 #include <signal.h>
 
 #define N 13
 
 extern char **environ;
 char uName[20];
-
-int persist_fd = -1;
 
 char *allowed[N] = {"cp","touch","mkdir","ls","pwd","cat","grep","chmod","diff","cd","exit","help","sendmsg"};
 
@@ -41,31 +37,29 @@ void sendmsg (char *user, char *target, char *msg) {
     strcpy(m.target, target);
     strcpy(m.msg, msg);
 
-	int fd = open("serverFIFO", O_WRONLY);
-	if (fd < 0) {
-		perror("open serverFIFO");
-		return;
-	}
-	if (write(fd, &m, sizeof(m)) < 0) {
-		perror("write to serverFIFO");
-	}
-	close(fd);
+    int fd = open("serverFIFO", O_WRONLY);
+    if (fd >= 0) {
+        write(fd, &m, sizeof(m));
+        close(fd);
+    }
 }
 
 void* messageListener(void *arg) {
-    // TODO:
+	// TODO:
 	// Read user's own FIFO in an infinite loop for incoming messages
 	// The logic is similar to a server listening to requests
 	// print the incoming message to the standard output in the
 	// following format
 	// Incoming message from [source]: [message]
 	// put an end of line at the end of the message
-	
-	char fifoName[50];
+
+    char fifoName[50];
     sprintf(fifoName, "%s", (char*)arg);
+
     struct message incoming;
 
     while (1) {
+
         int fd = open(fifoName, O_RDONLY);
         if (fd < 0) continue;
 
@@ -78,7 +72,6 @@ void* messageListener(void *arg) {
         close(fd);
     }
 }
-
 
 int isAllowed(const char*cmd) {
 	int i;
@@ -106,30 +99,10 @@ int main(int argc, char **argv) {
 
     strcpy(uName,argv[1]);
 
-	// Ensure user FIFO exists (create if necessary)
-	if (mkfifo(uName, 0666) < 0) {
-		if (errno != EEXIST) {
-			perror("mkfifo user fifo");
-			exit(1);
-		}
-	}
-
-	// Open a persistent descriptor so this process counts as a reader
-	persist_fd = open(uName, O_RDWR | O_NONBLOCK);
-	if (persist_fd < 0) {
-		perror("open user fifo");
-		// Not fatal; continue but listener may block or server may think user offline
-	}
-
-	// create the message listener thread
-	pthread_t tid;
-	if (pthread_create(&tid, NULL, messageListener, (void*)uName) != 0) {
-		perror("pthread_create");
-		// try to clean up and exit
-		if (persist_fd >= 0) close(persist_fd);
-		unlink(uName);
-		exit(1);
-	}
+    // TODO:
+    // create the message listener thread
+    pthread_t tid;
+    pthread_create(&tid, NULL, messageListener, (void*)uName);
 
     while (1) {
 
@@ -162,8 +135,9 @@ int main(int argc, char **argv) {
 
 		// if no argument is specified, you should print the following
 		// printf("sendmsg: you have to specify target user\n");
-		// if no message is specified, you should print the followingA
+		// if no message is specified, you should print the following
  		// printf("sendmsg: you have to enter a message\n");
+
 		char *target = strtok(NULL, " ");
 		if (target == NULL) {
 			printf("sendmsg: you have to specify target user\n");
@@ -239,8 +213,5 @@ int main(int argc, char **argv) {
 	posix_spawnattr_destroy(&attr);
 
     }
-	// cleanup
-	if (persist_fd >= 0) close(persist_fd);
-	unlink(uName);
-	return 0;
+    return 0;
 }
