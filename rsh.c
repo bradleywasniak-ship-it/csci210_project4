@@ -57,10 +57,10 @@ void* messageListener(void *arg) {
     sprintf(fifoName, "%s", (char*)arg);
 
     struct message incoming;
+	int fd = open(fifoName, O_RDONLY);
 
     while (1) {
 
-        int fd = open(fifoName, O_RDONLY);
         if (fd < 0) continue;
 
         while (read(fd, &incoming, sizeof(incoming)) > 0) {
@@ -69,8 +69,8 @@ void* messageListener(void *arg) {
             fflush(stdout);
         }
 
-        close(fd);
     }
+	close(fd);
 }
 
 int isAllowed(const char*cmd) {
