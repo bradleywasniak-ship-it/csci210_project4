@@ -6,7 +6,6 @@
 #include <string.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include <signal.h>
 
 #define N 13
 
@@ -55,9 +54,12 @@ void* messageListener(void *arg) {
 	int user = open(uName, O_RDONLY);
 	int dummyfd = open(uName,O_WRONLY);
 
+	
 	while(1) {
 		read(user, &incomingMessage, sizeof(incomingMessage));
+
 		printf("Incoming message from %s: %s\n", incomingMessage.source, incomingMessage.msg);
+
 	}
 
 	close(user);
@@ -93,8 +95,8 @@ int main(int argc, char **argv) {
 
     // TODO:
     // create the message listener thread
-    pthread_t tid;
-    pthread_create(&tid, NULL, messageListener, (void*)uName);
+	pthread_t tid;
+	pthread_create(&tid, NULL, messageListener, NULL);
 
     while (1) {
 
@@ -127,22 +129,22 @@ int main(int argc, char **argv) {
 
 		// if no argument is specified, you should print the following
 		// printf("sendmsg: you have to specify target user\n");
-		// if no message is specified, you should print the following
+		// if no message is specified, you should print the followingA
  		// printf("sendmsg: you have to enter a message\n");
-
-		char *target = strtok(NULL, " ");
-		if (target == NULL) {
+		char *targetUser = strtok(NULL," ");
+		char *message = strtok(NULL, "");
+		if(targetUser == NULL) {
 			printf("sendmsg: you have to specify target user\n");
 			continue;
 		}
 
-		char *msgStart = strtok(NULL, "");
-		if (msgStart == NULL) {
+		if(message == NULL) {
 			printf("sendmsg: you have to enter a message\n");
 			continue;
 		}
 
-		sendmsg(uName, target, msgStart);
+		sendmsg(uName, targetUser, message);
+
 		continue;
 	}
 
