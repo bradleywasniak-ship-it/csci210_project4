@@ -31,17 +31,16 @@ void sendmsg (char *user, char *target, char *msg) {
 	// TODO:
 	// Send a request to the server to send the message (msg) to the target user (target)
 	// by creating the message structure and writing it to server's FIFO
-	struct message m;
+	int server = open("serverFIFO", O_WRONLY);
 
-    strcpy(m.source, user);
-    strcpy(m.target, target);
-    strcpy(m.msg, msg);
+	struct message userMessage;
+	strcpy(userMessage.source, user);
+	strcpy(userMessage.target, target);
+	strcpy(userMessage.msg, msg);
 
-    int fd = open("serverFIFO", O_WRONLY);
-    if (fd >= 0) {
-        write(fd, &m, sizeof(m));
-        close(fd);
-    }
+	write(server, &userMessage, sizeof(userMessage));
+
+	close(server);
 }
 
 void* messageListener(void *arg) {
@@ -52,25 +51,18 @@ void* messageListener(void *arg) {
 	// following format
 	// Incoming message from [source]: [message]
 	// put an end of line at the end of the message
+	struct message incomingMessage;
+	int user = open(uName, O_RDONLY);
+	int dummyfd = open(uName,O_WRONLY);
 
-    char fifoName[50];
-    sprintf(fifoName, "%s", (char*)arg);
+	while(1) {
+		read(user, &incomingMessage, sizeof(incomingMessage));
+		printf("Incoming message from %s: %s\n", incomingMessage.source, incomingMessage.msg);
+	}
 
-    struct message incoming;
-	int fd = open(fifoName, O_RDONLY);
-
-    while (1) {
-
-        if (fd < 0) continue;
-
-        while (read(fd, &incoming, sizeof(incoming)) > 0) {
-            printf("Incoming message from %s: %s\n",
-                   incoming.source, incoming.msg);
-            fflush(stdout);
-        }
-
-    }
-	close(fd);
+	close(user);
+	close(dummyfd);
+	pthread_exit((void*)0);
 }
 
 int isAllowed(const char*cmd) {
