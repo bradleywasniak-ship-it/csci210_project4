@@ -44,11 +44,14 @@ int main() {
 		char fifoName[100];
    		sprintf(fifoName, "%s", req.target);
 
-    	target = open(fifoName, O_WRONLY);
-    	if (target >= 0) {
-        	write(target, &req, sizeof(req));
-        	close(target);
-    	}
+    	target = open(fifoName, O_WRONLY | O_NONBLOCK);
+		if (target < 0) {
+    		printf("User %s is not online.\n", req.target);
+   			continue;
+		}
+
+		write(target, &req, sizeof(req));
+		close(target);
 
 	}
 	close(server);

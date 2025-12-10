@@ -52,19 +52,21 @@ void* messageListener(void *arg) {
 	char fifoName[50];
     sprintf(fifoName, "%s", (char*)arg);
 
-    int fd = open(fifoName, O_RDONLY);
-
     struct message incoming;
 
     while (1) {
-        if (read(fd, &incoming, sizeof(incoming)) > 0) {
+        int fd = open(fifoName, O_RDONLY);
+        if (fd < 0) continue;
+
+        while (read(fd, &incoming, sizeof(incoming)) > 0) {
             printf("Incoming message from %s: %s\n",
                    incoming.source, incoming.msg);
             fflush(stdout);
         }
-    }
 
-    pthread_exit(0);
+        close(fd);
+        // loop back so it reopens the FIFO
+    }
 }
 
 int isAllowed(const char*cmd) {
